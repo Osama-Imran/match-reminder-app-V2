@@ -15,26 +15,6 @@ const String kSelectedTeamsKey = 'selected_teams';
 const String kReminderOffsetKey = 'reminder_offset_minutes';
 const int kDefaultOffsetMinutes = 30;
 
-// ---------- Background daily sync ----------
-@pragma('vm:entry-point')
-void callbackDispatcher() {
-  Workmanager().executeTask((task, inputData) async {
-    try {
-      tzdata.initializeTimeZones();
-      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
-      const initSettings = InitializationSettings(android: androidInit);
-      await notificationsPlugin.initialize(initSettings);
-
-      final prefs = await SharedPreferences.getInstance();
-      final raw = prefs.getStringList(kSelectedTeamsKey) ?? [];
-      final teams = raw.map((s) => Team.fromJson(jsonDecode(s))).toList();
-      final offset = prefs.getInt(kReminderOffsetKey) ?? kDefaultOffsetMinutes;
-      await scheduleAllReminders(teams, offset);
-    } catch (_) {}
-    return Future.value(true);
-  });
-}
-
 Future<int> scheduleAllReminders(List<Team> teams, int offsetMinutes) async {
   int notifId = 0;
   await notificationsPlugin.cancelAll();
@@ -81,9 +61,28 @@ Future<int> scheduleAllReminders(List<Team> teams, int offsetMinutes) async {
   return scheduled;
 }
 
+@pragma('vm:entry-point')
+void callbackDispatcher() {
+  Workmanager().executeTask((task, inputData) async {
+    try {
+      tzdata.initializeTimeZones();
+      const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher');
+      const initSettings = InitializationSettings(android: androidInit);
+      await notificationsPlugin.initialize(initSettings);
+
+      final prefs = await SharedPreferences.getInstance();
+      final raw = prefs.getStringList(kSelectedTeamsKey) ?? [];
+      final teams = raw.map((s) => Team.fromJson(jsonDecode(s))).toList();
+      final offset = prefs.getInt(kReminderOffsetKey) ?? kDefaultOffsetMinutes;
+      await scheduleAllReminders(teams, offset);
+    } catch (_) {}
+    return Future.value(true);
+  });
+}
+
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  Workmanager().initialize(callbackDispatcher, isInDebugMode: false);
+  Workmanager().initialize(callbackDispatcher);
   Workmanager().registerPeriodicTask(
     'daily-match-sync',
     'dailySyncTask',
